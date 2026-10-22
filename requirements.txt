@@ -1,0 +1,4 @@
+# CPU recognition and optional CPU punctuation. Python 3.10-3.12.
+numpy==1.26.4
+soundfile==0.13.1
+sherpa-onnx==1.12.37

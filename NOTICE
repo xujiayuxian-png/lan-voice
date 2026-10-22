@@ -1,0 +1,13 @@
+LAN Voice
+Copyright (c) 2026 LAN Voice contributors
+
+Application code and documentation are provided under the MIT License.
+See LICENSE for the full license text.
+
+Model weights are not included and retain their upstream licenses.
+The synthetic speech test fixture was generated using MeloTTS.
+MeloTTS is copyright (c) 2024 MyShell.ai, MIT licensed; its notice is
+included in docs/licenses/MeloTTS-LICENSE.txt.
+
+English third-party details: docs/third-party.md
+第三方资源中文说明：docs/third-party.zh-CN.md

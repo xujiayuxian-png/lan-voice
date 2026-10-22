@@ -1,0 +1,1404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#15242b">
+  <title>LAN Voice</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #15242b;
+      --muted: #5d6b70;
+      --line: #d9e1df;
+      --paper: #f5f7f5;
+      --panel: #ffffff;
+      --accent: #147d6b;
+      --accent-dark: #0f5b4f;
+      --warm: #f0a54b;
+      --danger: #b64c45;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    [hidden] { display: none !important; }
+    main { width: min(100%, 720px); margin: 0 auto; padding: 24px 16px 40px; }
+    header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; margin-bottom: 18px; }
+    .header-tools { display: grid; justify-items: end; gap: 8px; }
+    .language-control { margin: 0; font-size: 12px; }
+    #ui-language { display: block; min-height: 36px; margin-top: 3px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; }
+    h1 { font-size: 24px; line-height: 1.2; margin: 0; letter-spacing: 0; }
+    .subtitle { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    #status { color: var(--muted); font-size: 13px; text-align: right; max-width: 220px; }
+    #status.error { color: var(--danger); }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+    .record-area { margin-top: 12px; }
+    #record {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 56px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      touch-action: manipulation;
+    }
+    #record::before { content: ""; width: 14px; height: 14px; background: currentColor; border-radius: 50%; }
+    #record:active, #record.recording { background: var(--accent-dark); }
+    #record.recording::before { border-radius: 3px; }
+    #record.recording { box-shadow: 0 0 0 3px rgba(20, 125, 107, .13); }
+    #record:disabled { opacity: .55; }
+    .transcript-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 20px; margin-bottom: 9px; color: var(--muted); font-size: 12px; }
+    #timer { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .transcript-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .transcript-heading label { margin: 0; color: var(--ink); font-weight: 650; }
+    #recognition-state { border-radius: 20px; padding: 3px 9px; color: var(--muted); background: #edf1ee; font-size: 12px; }
+    #recognition-state[data-state="live"], #recognition-state[data-state="complete"] { background: #e5f3ed; color: var(--accent-dark); }
+    #recognition-state[data-state="working"] { background: #fff3dd; color: #79531b; }
+    #recognition-state[data-state="error"] { background: #faeae7; color: var(--danger); }
+    .live-legend { display: flex; gap: 10px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .live-legend span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); margin-right: 5px; }
+    .live-legend span:last-child::before { background: var(--accent); }
+    .transcript-body { height: clamp(180px, 32vh, 290px); }
+    #live-view { height: 100%; }
+    #live-transcript { height: 100%; overflow: auto; padding: 14px; border: 1px solid #b7d9cd; border-radius: 9px; background: #fcfdfc; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 17px; line-height: 1.8; }
+    #live-empty { color: #82908a; }
+    #live-draft { color: var(--accent-dark); text-decoration: underline dotted #83bbaa; text-underline-offset: 5px; }
+    .revised { animation: revision-fade 2s ease-out; border-radius: 3px; }
+    @keyframes revision-fade { from { background: #fce2a6; } to { background: transparent; } }
+    #live-revision { margin-top: 9px; padding: 7px 9px; border-radius: 6px; background: #fff7e6; color: #775a25; font-size: 12px; overflow-wrap: anywhere; }
+    #transcript-hint { margin: 8px 0 0; min-height: 20px; color: var(--muted); font-size: 12px; }
+    label { display: block; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+    textarea {
+      display: block;
+      width: 100%;
+      height: 100%;
+      resize: none;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--ink);
+      background: #fcfdfc;
+      font: inherit;
+      line-height: 1.65;
+    }
+    textarea:focus, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(20, 125, 107, .28); outline-offset: 2px; }
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+    .actions #send { flex: 1; }
+    .edit-actions { margin-top: 10px; }
+    .edit-actions button.action { min-height: 36px; padding: 0 12px; font-size: 13px; }
+    .options { display: grid; gap: 2px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    #context-settings { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+    #context-settings summary { cursor: pointer; padding: 6px 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    #context-current { color: var(--accent-dark); }
+    #context-fields { min-width: 0; border: 0; margin: 8px 0 0; padding: 0; }
+    #context-preset { width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; }
+    #context-custom-wrap { margin-top: 10px; }
+    #context-custom, #context-preset-text { height: 88px; min-height: 88px; resize: vertical; font-size: 14px; }
+    .context-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .context-actions button.action { min-height: 40px; padding: 0 12px; font-size: 13px; }
+    #context-preset-editor { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+    #context-preset-name { width: 100%; min-height: 44px; padding: 8px 10px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: #fff; font: inherit; }
+    #context-help, #context-count, #context-error, #context-preset-count, #context-preset-error, #context-storage-note, #context-preset-notice { margin: 6px 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+    #context-error, #context-preset-error { color: var(--danger); }
+    button.action {
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font: inherit;
+      font-weight: 650;
+    }
+    button.action.secondary { background: #fff; color: var(--accent-dark); border-color: var(--line); }
+    button.action:disabled { opacity: .5; }
+    .check { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; margin: 0; color: var(--muted); font-size: 14px; }
+    .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+    #detail { min-height: 22px; margin-top: 14px; color: var(--muted); font-size: 13px; }
+    #correction-help { margin: 4px 0; font-size: 12px; color: var(--muted); }
+    @media (max-width: 520px) {
+      main { padding-top: 18px; }
+      #status { max-width: 155px; }
+      .panel { padding: 14px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .revised { animation: none; background: #fff1c9; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><h1>LAN Voice</h1><p class="subtitle" data-i18n="subtitle">Local voice input · Chinese &amp; English</p></div>
+      <div class="header-tools">
+        <label class="language-control" for="ui-language"><span data-i18n="interfaceLanguage">Interface language</span>
+          <select id="ui-language" data-i18n-aria-label="interfaceLanguage"><option value="en">English</option><option value="zh-CN">中文</option></select>
+        </label>
+        <div id="status" role="status" data-i18n="checking">Checking service</div>
+      </div>
+    </header>
+    <section class="panel">
+      <div class="transcript-heading">
+        <label for="transcript" data-i18n="transcript">Transcript</label>
+        <span id="recognition-state" data-state="idle" role="status" data-i18n="waitingRecording">Ready to record</span>
+      </div>
+      <div class="transcript-meta">
+        <span id="idle-legend" data-i18n="idleLegend">Speak naturally; pauses trigger review</span>
+        <span id="live-legend" class="live-legend" aria-hidden="true" hidden><span data-i18n="confirmed">Confirmed</span><span data-i18n="draftLegend">Draft may change</span></span>
+        <span id="timer">00:00</span>
+      </div>
+      <div class="transcript-body">
+        <div id="live-view" hidden>
+          <div id="live-transcript" role="region" data-i18n-aria-label="liveTranscript" aria-label="Live transcript" aria-describedby="transcript-hint" tabindex="0"><span id="live-empty" data-i18n="liveEmpty">Start speaking to see your words here.</span><span id="live-confirmed"></span><span id="live-draft"></span></div>
+        </div>
+        <textarea id="transcript" spellcheck="false" aria-describedby="transcript-hint" data-i18n-placeholder="transcriptPlaceholder" placeholder="Start recording below, or type here"></textarea>
+      </div>
+      <div class="record-area">
+        <button id="record" type="button" aria-pressed="false" disabled data-i18n="recordIdle">Start recording</button>
+      </div>
+      <div id="live-revision" role="status" aria-live="polite" hidden></div>
+      <p id="transcript-hint" data-i18n="hintIdle">See words live, then edit and send them to your computer.</p>
+      <div class="actions">
+        <button id="send" class="action" type="button" disabled data-i18n="send">Send to computer</button>
+        <button id="clear" class="action secondary" type="button" data-i18n="clear">Clear</button>
+      </div>
+      <details id="context-settings" hidden>
+        <summary><span data-i18n="contextSummary">Context (optional): </span><span id="context-current">General dictation</span></summary>
+        <fieldset id="context-fields">
+          <label for="context-preset" data-i18n="contextLabel">Recognition context</label>
+          <select id="context-preset">
+            <option value="general">General dictation (no context)</option>
+            <option value="meetings">Meetings</option>
+            <option value="software">Software development</option>
+            <option value="custom">Custom</option>
+          </select>
+          <div class="context-actions">
+            <button id="context-preset-new" class="action secondary" type="button" data-i18n="presetNew">Add preset</button>
+            <button id="context-preset-edit" class="action secondary" type="button" disabled data-i18n="edit">Edit</button>
+            <button id="context-preset-delete" class="action secondary" type="button" disabled data-i18n="delete">Delete</button>
+          </div>
+          <div id="context-preset-editor" hidden>
+            <label for="context-preset-name" data-i18n="presetName">Preset name</label>
+            <input id="context-preset-name" type="text" data-i18n-placeholder="presetNamePlaceholder" placeholder="For example: Weekly planning" autocomplete="off" aria-describedby="context-preset-error">
+            <label for="context-preset-text" data-i18n="presetText">Recognition context (optional)</label>
+            <textarea id="context-preset-text" rows="3" data-i18n-placeholder="contextPlaceholder" placeholder="Add common terms or topics, in Chinese, English, or both." aria-describedby="context-preset-count context-preset-error"></textarea>
+            <p id="context-preset-count"></p>
+            <p id="context-preset-error" role="alert" hidden></p>
+            <div class="context-actions">
+              <button id="context-preset-save" class="action" type="button" data-i18n="presetSave">Save preset</button>
+              <button id="context-preset-cancel" class="action secondary" type="button" data-i18n="cancel">Cancel</button>
+            </div>
+            <p id="context-preset-editor-help" class="subtitle" data-i18n="presetHelp">Use up to 30 characters. Save or cancel before recording.</p>
+          </div>
+          <div class="context-actions" id="context-preset-deleted" hidden>
+            <p id="context-preset-notice" role="status"></p>
+            <button id="context-preset-undo" class="action secondary" type="button" data-i18n="undoDelete">Undo deletion</button>
+          </div>
+          <div id="context-custom-wrap" hidden>
+            <label for="context-custom" data-i18n="customContext">Custom context</label>
+            <textarea id="context-custom" rows="3" data-i18n-placeholder="contextPlaceholder" placeholder="Add common terms or topics, in Chinese, English, or both." aria-describedby="context-help context-count context-error"></textarea>
+            <p id="context-count"></p>
+          </div>
+          <p id="context-help" data-i18n="contextHelp">Optional context helps recognize terms in any supported language. It stays fixed during each recording.</p>
+          <p id="context-storage-note" data-i18n="storageSaved">Presets and preferences stay in this browser.</p>
+          <p id="context-error" role="alert" hidden></p>
+        </fieldset>
+      </details>
+      <div class="actions edit-actions">
+        <button id="correct" class="action secondary" type="button" disabled data-i18n="additionalCorrection">Additional text correction</button>
+        <button id="restore" class="action secondary" type="button" disabled data-i18n="restore">Restore original</button>
+      </div>
+      <div class="options">
+        <label class="check"><input id="auto-correct" type="checkbox" aria-describedby="correction-help"><span data-i18n="additionalCorrection">Additional text correction</span></label>
+        <p id="correction-help" data-i18n="correctionNotConfigured">An optional model checks finalized text. No correction model is configured.</p>
+        <label class="check"><input id="auto-send" type="checkbox"><span data-i18n="autoSend">Automatically send finalized text to computer</span></label>
+      </div>
+      <div id="detail" aria-live="polite"></div>
+    </section>
+  </main>
+  <script>
+    // UI language is independent of the audio language and recognition context.
+    const messages = {
+      subtitle: ["Local voice input · Chinese & English", "局域网语音输入 · 中文与 English"],
+      interfaceLanguage: ["Interface language", "界面语言"],
+      checking: ["Checking service", "正在检查服务"],
+      transcript: ["Transcript", "转写内容"],
+      waitingRecording: ["Ready to record", "等待录音"],
+      idleLegend: ["Speak naturally; pauses trigger review", "自然说话，停顿后复核"],
+      confirmed: ["Confirmed", "已确认"],
+      draftLegend: ["Draft may change", "草稿可回改"],
+      liveTranscript: ["Live transcript", "实时转写"],
+      liveEmpty: ["Start speaking to see your words here.", "开始说话，文字会在这里逐步出现。"],
+      transcriptPlaceholder: ["Start recording below, or type here", "点击下方开始录音，或直接在这里输入文字"],
+      recordIdle: ["Start recording", "开始录音"],
+      recordRequesting: ["Waiting for microphone", "等待麦克风授权"],
+      recordRecording: ["Stop and finalize", "结束并定稿"],
+      finalizing: ["Finalizing transcript", "正在完成识别"],
+      correcting: ["Checking text", "正在纠错"],
+      sending: ["Sending", "正在发送"],
+      hintIdle: ["See words live, then edit and send them to your computer.", "录音时实时显示；结束后可以编辑，再发送到电脑。"],
+      send: ["Send to computer", "发送到电脑"], clear: ["Clear", "清空"],
+      contextSummary: ["Context (optional): ", "语境（可选）："],
+      contextLabel: ["Recognition context", "识别背景"],
+      general: ["General dictation (no context)", "通用听写（无语境）"],
+      meetings: ["Meetings", "会议记录"], software: ["Software development", "软件开发"],
+      custom: ["Custom", "自定义"], presetNew: ["Add preset", "新增预设"],
+      edit: ["Edit", "编辑"], delete: ["Delete", "删除"],
+      presetName: ["Preset name", "预设名称"],
+      presetNamePlaceholder: ["For example: Weekly planning", "例如：每周计划"],
+      presetText: ["Recognition context (optional)", "识别背景（可留空）"],
+      contextPlaceholder: ["Add common terms or topics, in Chinese, English, or both.", "填写常用术语或讨论主题，中英文均可。"],
+      presetSave: ["Save preset", "保存预设"], cancel: ["Cancel", "取消"],
+      presetHelp: ["Use up to 30 characters. Save or cancel before recording.", "名称最多 30 个字符。保存或取消后即可录音。"],
+      undoDelete: ["Undo deletion", "撤销删除"], customContext: ["Custom context", "自定义背景"],
+      contextHelp: ["Optional context helps recognize terms in any supported language. It stays fixed during each recording.", "语境可留空，只帮助识别专业词，不限制中英文。录音开始后本次设置锁定。"],
+      storageSaved: ["Presets and preferences stay in this browser.", "预设和选择保存在当前浏览器。"],
+      storageUnavailable: ["Browser storage is unavailable. Changes work on this page but will be lost after a refresh.", "当前浏览器无法保存设置；本页仍可使用，刷新后会丢失修改。"],
+      additionalCorrection: ["Additional text correction", "额外文字纠错"],
+      correctionHelp: ["An optional model checks the finalized text before sending.", "定稿后由额外模型检查文字，再进行发送。"],
+      correctionNotConfigured: ["An optional model checks finalized text. No correction model is configured.", "可通过额外模型检查定稿文字；当前尚未配置纠错模型。"],
+      restore: ["Restore original", "恢复原文"],
+      autoSend: ["Automatically send finalized text to computer", "定稿后自动发送到电脑"],
+      characterCount: ["{count} / {max} characters", "{count} / {max} 个字符"],
+      contextTooLong: ["Context allows up to {max} characters. Shorten it before recording.", "语境最多 {max} 个字符，请缩短后再录音。"],
+      contextInvalid: ["Context contains unreadable characters. Please enter it again.", "语境包含无法读取的字符，请重新输入。"],
+      presetDeleted: ["Deleted “{name}”.", "已删除“{name}”。"],
+      presetNameRequired: ["Enter a preset name.", "请输入预设名称。"],
+      presetNameTooLong: ["Preset names allow up to 30 characters.", "预设名称最多 30 个字符。"],
+      presetNameDuplicate: ["A preset already has this name. Choose another name.", "已有同名预设，请换一个名称。"],
+      presetContextTooLong: ["Context allows up to {max} characters. Shorten it before saving.", "语境最多 {max} 个字符，请缩短后再保存。"],
+      presetInvalid: ["The name or context contains unreadable characters. Please enter it again.", "名称或语境包含无法读取的字符，请重新输入。"],
+      httpsRequired: ["Open this page over HTTPS to use the microphone.", "手机浏览器需要通过 HTTPS 访问才能使用麦克风"],
+      recorderUnsupported: ["Recording is unavailable in this browser. Use a recent Chrome or Safari version.", "当前浏览器不支持录音，请使用新版 Chrome 或 Safari"],
+      revision: ["Just revised: “{before}” → “{after}”", "刚刚修正：「{before}」 → 「{after}」"],
+      finalized: ["Finalized", "已定稿"],
+      pauseReviewed: ["Pause reviewed · Keep speaking", "停顿已复核 · 继续说"],
+      draftUpdating: ["Updating live draft", "草稿实时更新"],
+      timerTitle: ["Recording time / maximum duration (minutes:seconds)", "录音时长 / 最长时长（分:秒）"],
+      durationLimit: ["Approaching the {max}-second limit; stopping automatically", "接近 {max} 秒上限，自动结束录音"],
+      requestFailed: ["Request failed ({status})", "请求失败（{status}）"],
+      requestTimeout: ["Request timed out. Check the computer service and network.", "请求超时，请检查电脑服务和网络连接"],
+      connectionFailed: ["Cannot connect to the computer. Check the service and network.", "无法连接电脑，请检查服务和网络连接"],
+      modelUnavailable: ["The speech model is unavailable. You can still type and send text.", "模型不可用，可手动输入文字发送"],
+      ready: ["Service ready", "服务已就绪"],
+      dryRunDetail: ["Test mode: requests will not paste text into a computer window.", "测试模式：文字只用于接口测试，不会粘贴到电脑窗口"],
+      nativeReadyDetail: ["Live recognition and pause review are on. Record up to {max} seconds; place the computer cursor in the target field before sending.", "实时识别和停顿复核已开启；最多录音 {max} 秒，发送前请将电脑光标放在目标输入框"],
+      streamingReadyDetail: ["Live recognition is on. Record up to {max} seconds; place the computer cursor in the target field before sending.", "流式识别已启用；最多录音 {max} 秒，发送前请将电脑光标放在目标输入框"],
+      offlineReadyDetail: ["Record up to {max} seconds. Place the computer cursor in the target field before sending.", "每次最多录音 {max} 秒；发送前请将电脑光标放在目标输入框"],
+      refreshAfterRecovery: ["Refresh this page after the service is available again.", "服务恢复后请刷新页面重试"],
+      allowMicrophone: ["Allow microphone access in your browser", "请允许浏览器使用麦克风"],
+      waitingMicrophone: ["Waiting for microphone", "等待麦克风"],
+      audioTooLarge: ["Recording exceeds the size limit. Try a shorter recording.", "录音超过大小限制，请缩短录音后重试"],
+      microphoneInterrupted: ["Recording was interrupted. Check the microphone and try again.", "录音设备中断，请检查麦克风后重试"],
+      recording: ["Recording", "正在录音"],
+      listening: ["Listening for your voice", "正在听，等你开口"],
+      recordingState: ["Recording", "录音中"],
+      hintLive: ["The draft updates as you speak. Highlights show revisions; pauses trigger review.", "草稿会随语音即时更新，浅色高亮表示刚刚修正；停顿后确认上一句。"],
+      hintOffline: ["Transcription starts when recording stops. Keep this page open.", "结束录音后开始转写，请保持页面打开。"],
+      liveDetail: ["Recognizing a draft; later speech may revise earlier words", "正在识别草稿；后面的语音可能会修正前面的文字"],
+      recordingDetail: ["Tap again to stop recording. Keep this page open.", "再次点击结束录音；请保持页面打开"],
+      microphoneDenied: ["Microphone permission was denied. Allow it in the browser site settings and try again.", "麦克风权限被拒绝，请在浏览器网站设置中允许麦克风后重试"],
+      microphoneMissing: ["No microphone was found.", "没有找到可用的麦克风"],
+      microphoneBusy: ["Cannot use the microphone. Check whether another app is using it.", "无法使用麦克风，请检查是否被其他应用占用"],
+      microphoneNotStarted: ["Microphone not started", "麦克风未开启"],
+      draftUnconfirmed: ["Unfinalized · Please review", "未定稿 · 请检查"],
+      recognitionIncomplete: ["Recognition incomplete", "识别未完成"],
+      hintDraftPreserved: ["Your unfinalized draft is preserved. Review and edit it, or record again.", "已保留未定稿的草稿，请核对后编辑或重新录音。"],
+      hintOriginalPreserved: ["Your previous text is preserved. Record again or edit it manually.", "原有文字已保留，可以重新录音或手动编辑。"],
+      draftPreservedDetail: ["The draft is not finalized and automatic sending was canceled. Review and send it manually, or record again.", "草稿尚未定稿，自动发送已取消；请检查后手动发送，或重新录音"],
+      originalPreservedDetail: ["Your previous text is preserved. You can record again.", "原有文字已保留，可以重新录音"],
+      transcribing: ["Transcribing", "正在转写"],
+      reviewingLast: ["Reviewing the last sentence", "正在复核最后一句"],
+      hintFinalizing: ["Please wait. Editing and sending will be available once the text is finalized.", "请稍候，完成定稿后才会开放编辑和发送。"],
+      noAudio: ["No audio was recorded. Please try again.", "没有录到声音，请重新录音"],
+      noText: ["No speech was recognized. Move closer to the microphone and try again.", "没有识别到文字，请靠近麦克风后重试"],
+      transcriptionComplete: ["Transcription complete", "转写完成"],
+      hintFinalized: ["The text is finalized. You can edit and send it to your computer.", "已定稿，可以直接编辑后发送到电脑。"],
+      serverElapsed: ["Server processing: {elapsed} ms", "服务端耗时 {elapsed} ms"],
+      lastUnfinalized: ["The last sentence could not be finalized. Review the text or record again.", "最后一句未能定稿，请检查文字或重新录音"],
+      finalizationFailed: ["Audio review of the last sentence failed. Your draft is preserved; review it before recording again or sending manually.", "最后一句的音频复核未成功，已保留草稿，请检查后重新录音或手动发送"],
+      streamFailed: ["Live transcription failed", "流式转写失败"],
+      notFinished: ["Recognition did not finish. Please record again.", "识别尚未完成，请重新录音"],
+      streamComplete: ["Live recognition is complete and the draft is finalized", "流式识别已完成，草稿已定稿"],
+      testSent: ["Test request succeeded", "测试请求成功"],
+      sent: ["Sent to the active window", "已发送到当前窗口"],
+      noPaste: ["Test mode does not paste into computer windows", "测试模式不会粘贴到电脑窗口"],
+      confirmPaste: ["Check the text in the target field on your computer", "请在电脑的目标输入框确认文字"],
+      sendingFailedDetail: ["Your text is preserved. Check whether the computer received it before retrying to avoid duplicate pastes.", "文字已保留；重试前请确认电脑是否已收到，避免重复粘贴"],
+      correctionComplete: ["Text check complete", "纠错完成"],
+      correctionUnchanged: ["No clear text errors found", "未发现明显错字"],
+      originalKept: ["Original text preserved", "已保留原文"],
+      correctionUnavailable: ["Text correction is unavailable; original text preserved", "纠错服务不可用，已保留原文"],
+      correctionDisabled: ["Additional text correction is not configured", "纠错未启用"],
+      correctionTooLong: ["Text is too long; additional correction was skipped", "文字较长，已跳过纠错"],
+      correctionElapsed: ["Text check: {elapsed} ms", "纠错耗时 {elapsed} ms"],
+      restored: ["Original restored", "已恢复原文"],
+      manualEdit: ["Manually edited", "手动编辑"],
+      unauthorized: ["Access denied. Open the full access link from your computer.", "访问被拒绝，请使用电脑提供的完整访问链接。"],
+      decoderUnavailable: ["Audio decoding is unavailable. Check the computer service.", "音频解码不可用，请检查电脑服务。"]
+    };
+    const uiLanguageSelect = document.querySelector("#ui-language");
+    let uiLanguage = navigator.language?.toLowerCase().startsWith("zh") ? "zh-CN" : "en";
+    try {
+      const saved = localStorage.getItem("voice-input.ui-language");
+      if (["en", "zh-CN"].includes(saved)) uiLanguage = saved;
+    } catch (_) { /* Language switching also works without persistent storage. */ }
+    const m = (key, values = {}) => ({ key, values });
+    function translated(value) {
+      if (typeof value === "string") return value;
+      if (!value) return "";
+      const template = messages[value.key]?.[uiLanguage === "zh-CN" ? 1 : 0] || value.key;
+      return template.replace(/\{(\w+)\}/g, (_, key) => String(value.values?.[key] ?? ""));
+    }
+    function setLocalized(element, value) {
+      element.uiMessage = value;
+      element.textContent = translated(value);
+    }
+    function localError(key, values) {
+      const error = new Error(translated(m(key, values)));
+      error.uiMessage = m(key, values);
+      return error;
+    }
+    function errorMessage(error) {
+      if (error?.uiMessage) return error.uiMessage;
+      const message = typeof error === "string" ? error : error?.message || "";
+      const known = Object.entries(messages).find(([, values]) => values.includes(message));
+      return known ? m(known[0]) : message;
+    }
+    function applyLanguage() {
+      document.documentElement.lang = uiLanguage;
+      document.title = "LAN Voice";
+      uiLanguageSelect.value = uiLanguage;
+      document.querySelectorAll("[data-i18n]").forEach(element => {
+        setLocalized(element, element.uiMessage ?? m(element.dataset.i18n));
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach(element => {
+        element.placeholder = translated(m(element.dataset.i18nPlaceholder));
+      });
+      document.querySelectorAll("[data-i18n-aria-label]").forEach(element => {
+        element.setAttribute("aria-label", translated(m(element.dataset.i18nAriaLabel)));
+      });
+      [status, detail, recognitionState, transcriptHint, liveRevision, contextPresetError].forEach(element => {
+        if (element.uiMessage !== undefined) setLocalized(element, element.uiMessage);
+      });
+      timer.title = translated(m("timerTitle"));
+      timer.setAttribute("aria-label", translated(m("timerTitle")));
+      renderContextOptions();
+      renderControls();
+    }
+    const token = new URLSearchParams(location.search).get("token") || "";
+    const recordButton = document.querySelector("#record");
+    const sendButton = document.querySelector("#send");
+    const clearButton = document.querySelector("#clear");
+    const transcript = document.querySelector("#transcript");
+    const autoSend = document.querySelector("#auto-send");
+    const correctButton = document.querySelector("#correct");
+    const restoreButton = document.querySelector("#restore");
+    const autoCorrect = document.querySelector("#auto-correct");
+    const liveView = document.querySelector("#live-view");
+    const liveLegend = document.querySelector("#live-legend");
+    const idleLegend = document.querySelector("#idle-legend");
+    const liveTranscript = document.querySelector("#live-transcript");
+    const liveEmpty = document.querySelector("#live-empty");
+    const liveConfirmed = document.querySelector("#live-confirmed");
+    const liveDraft = document.querySelector("#live-draft");
+    const liveRevision = document.querySelector("#live-revision");
+    const recognitionState = document.querySelector("#recognition-state");
+    const transcriptHint = document.querySelector("#transcript-hint");
+    const contextSettings = document.querySelector("#context-settings");
+    const contextFields = document.querySelector("#context-fields");
+    const contextPreset = document.querySelector("#context-preset");
+    const contextCustom = document.querySelector("#context-custom");
+    const contextCustomWrap = document.querySelector("#context-custom-wrap");
+    const contextCurrent = document.querySelector("#context-current");
+    const contextCount = document.querySelector("#context-count");
+    const contextError = document.querySelector("#context-error");
+    const contextPresetNew = document.querySelector("#context-preset-new");
+    const contextPresetEdit = document.querySelector("#context-preset-edit");
+    const contextPresetDelete = document.querySelector("#context-preset-delete");
+    const contextPresetEditor = document.querySelector("#context-preset-editor");
+    const contextPresetName = document.querySelector("#context-preset-name");
+    const contextPresetText = document.querySelector("#context-preset-text");
+    const contextPresetCount = document.querySelector("#context-preset-count");
+    const contextPresetError = document.querySelector("#context-preset-error");
+    const contextPresetDeleted = document.querySelector("#context-preset-deleted");
+    const contextPresetNotice = document.querySelector("#context-preset-notice");
+    const contextPresetUndo = document.querySelector("#context-preset-undo");
+    const contextStorageNote = document.querySelector("#context-storage-note");
+    // Builtin names are translated only when the complete original template
+    // is unchanged. User names and context text never change with UI language.
+    const defaultContextPresets = [
+      { id: "meetings", name: "Meetings", text: "Meeting notes covering the agenda, decisions, action items, and follow-up." },
+      { id: "software", name: "Software development", text: "Software development involving programming languages, APIs, databases, and debugging." }
+    ];
+    // SHA-256 of [id, name, text] identifies unchanged legacy templates
+    // without publishing their original content. Edited user data is retained.
+    const legacyPresetFingerprints = {
+      "f3eeb2fe4152ca4e3a4cfc047e2f0ff4a4a4fc223d12925f3dec6fede74d6983": "remove",
+      "5fd79412194e45dd528904a26da4aad7ec5bb4610139fa6acb958189924d494f": "remove",
+      "6625aefc32855061c32295f52666a2e160e79976d4ea2485d0f5e559f3d68d8e": "software"
+    };
+    const samePreset = (a, b) => a.id === b.id && a.name === b.name && a.text === b.text;
+    let contextPresets = defaultContextPresets.map(item => ({ ...item }));
+    let contextStorageAvailable = true;
+    let contextEditor = null;
+    let deletedContextPreset = null;
+    function storedContextValue(key) {
+      let value;
+      try { value = localStorage.getItem(key); }
+      catch (_) { contextStorageAvailable = false; return null; }
+      try { return JSON.parse(value); }
+      catch (_) { return null; }
+    }
+    const savedContextPresets = storedContextValue("voice-input.asr-context-presets");
+    const hasSavedContextPresets = Array.isArray(savedContextPresets) && savedContextPresets.every(item =>
+      item && typeof item.id === "string" && item.id && !["general", "custom"].includes(item.id) &&
+      typeof item.name === "string" && item.name.trim() && Array.from(item.name).length <= 30 &&
+      typeof item.text === "string") &&
+      new Set(savedContextPresets.map(item => item.id)).size === savedContextPresets.length &&
+      new Set(savedContextPresets.map(item => item.name.trim().toLowerCase())).size === savedContextPresets.length;
+    if (hasSavedContextPresets) contextPresets = savedContextPresets;
+    async function migrateContextPresets() {
+      if (!hasSavedContextPresets || !globalThis.crypto?.subtle) return;
+      let migrated;
+      try {
+        migrated = await Promise.all(contextPresets.map(async item => {
+          const bytes = new TextEncoder().encode(JSON.stringify([item.id, item.name, item.text]));
+          const digest = await crypto.subtle.digest("SHA-256", bytes);
+          const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+          const action = Object.hasOwn(legacyPresetFingerprints, fingerprint) ? legacyPresetFingerprints[fingerprint] : null;
+          return action === "remove" ? null : action === "software" ? { ...defaultContextPresets[1] } : item;
+        }));
+      } catch (_) { return; } // A failed migration must never remove user data.
+      contextPresets = migrated.filter(Boolean);
+      if (contextPreference && !["general", "custom"].includes(contextPreference.preset) &&
+          !contextPresets.some(item => item.id === contextPreference.preset)) contextPreference.preset = "general";
+      if (JSON.stringify(contextPresets) !== JSON.stringify(savedContextPresets)) {
+        try { localStorage.setItem("voice-input.asr-context-presets", JSON.stringify(contextPresets)); }
+        catch (_) { contextStorageAvailable = false; }
+      }
+    }
+    let contextPreference = null;
+    const savedContextPreference = storedContextValue("voice-input.asr-context");
+    if (savedContextPreference && typeof savedContextPreference.preset === "string" &&
+        typeof savedContextPreference.custom === "string") {
+      contextPreference = {
+        preset: ["general", "custom"].includes(savedContextPreference.preset) || contextPresets.some(item => item.id === savedContextPreference.preset)
+          ? savedContextPreference.preset : "general",
+        custom: savedContextPreference.custom
+      };
+    }
+    let contextInitialized = false;
+    let maxContextChars = 500;
+    let autoCorrectPreference = true;
+    try {
+      autoCorrectPreference = localStorage.getItem("voice-input.auto-correct") !== "false";
+    } catch (_) { /* Correction still works when browser storage is blocked. */ }
+    let originalText = "";
+    const status = document.querySelector("#status");
+    const detail = document.querySelector("#detail");
+    const timer = document.querySelector("#timer");
+    let phase = "idle";
+    let service = null;
+    let recording = null;
+    // Keep ownership until recognition finishes, even after releasing the mic.
+    // A restored page must never accept a result from its previous recording.
+    let activeSession = null;
+    let timerHandle = null;
+    let departing = false;
+    let generation = 0;
+    const requests = new Set();
+    let maxAudioBytes = 25 * 1024 * 1024;
+    let maxAudioSeconds = 120;
+    let maxTextChars = 20000;
+
+    function presetLabel(item) {
+      const builtin = defaultContextPresets.find(template => samePreset(item, template));
+      return builtin ? translated(m(builtin.id)) : item.name;
+    }
+
+    function renderContextOptions(selected = contextPreset.value || "general") {
+      contextPreset.replaceChildren(
+        new Option(translated(m("general")), "general"),
+        ...contextPresets.map(item => new Option(presetLabel(item), item.id)),
+        new Option(translated(m("custom")), "custom")
+      );
+      contextPreset.value = ["general", "custom"].includes(selected) || contextPresets.some(item => item.id === selected)
+        ? selected : "general";
+    }
+
+    renderContextOptions();
+
+    function selectedContext() {
+      return contextPreset.value === "custom" ? contextCustom.value.trim()
+        : contextPresets.find(item => item.id === contextPreset.value)?.text || "";
+    }
+
+    function contextValidationError() {
+      if (!service?.asr_context_configurable) return "";
+      if (Array.from(selectedContext()).length > maxContextChars) return m("contextTooLong", { max: maxContextChars });
+      try { encodeURIComponent(selectedContext()); }
+      catch (_) { return m("contextInvalid"); }
+      return "";
+    }
+
+    function renderContext() {
+      contextSettings.hidden = !service?.asr_context_configurable;
+      contextFields.disabled = phase !== "idle" || departing || !service?.asr_context_configurable;
+      contextPreset.disabled = !!contextEditor;
+      contextCustom.disabled = !!contextEditor;
+      const savedPreset = contextPresets.some(item => item.id === contextPreset.value);
+      contextPresetNew.disabled = !!contextEditor;
+      contextPresetEdit.disabled = !!contextEditor || !savedPreset;
+      contextPresetDelete.disabled = !!contextEditor || !savedPreset;
+      contextPresetUndo.disabled = !!contextEditor;
+      contextPresetEditor.hidden = !contextEditor;
+      setLocalized(contextPresetCount, m("characterCount", { count: Array.from(contextPresetText.value.trim()).length, max: maxContextChars }));
+      contextPresetDeleted.hidden = !deletedContextPreset;
+      setLocalized(contextPresetNotice, deletedContextPreset ? m("presetDeleted", { name: presetLabel(deletedContextPreset.item) }) : "");
+      setLocalized(contextStorageNote, m(contextStorageAvailable ? "storageSaved" : "storageUnavailable"));
+      contextCustomWrap.hidden = contextPreset.value !== "custom";
+      contextCurrent.textContent = contextPreset.selectedOptions[0]?.textContent || translated(m("general"));
+      setLocalized(contextCount, m("characterCount", { count: Array.from(contextCustom.value.trim()).length, max: maxContextChars }));
+      const problem = contextValidationError();
+      setLocalized(contextError, problem);
+      contextError.hidden = !problem;
+      if (problem) contextSettings.open = true;
+      contextCustom.setAttribute("aria-invalid", String(!!problem));
+    }
+
+    function initializeContext(data) {
+      maxContextChars = Number.isInteger(data.max_asr_context_chars) && data.max_asr_context_chars > 0
+        ? data.max_asr_context_chars : 500;
+      if (!data.asr_context_configurable || contextInitialized) return;
+      if (contextPreference) {
+        contextPreset.value = contextPreference.preset;
+        contextCustom.value = contextPreference.custom;
+      } else {
+        const background = typeof data.asr_context === "string" ? data.asr_context : "";
+        contextPreset.value = !background ? "general" : contextPresets.find(item => item.text === background)?.id || "custom";
+        if (contextPreset.value === "custom") contextCustom.value = background;
+      }
+      contextInitialized = true;
+    }
+
+    function rememberContext() {
+      contextPreference = { preset: contextPreset.value, custom: contextCustom.value };
+      try { localStorage.setItem("voice-input.asr-context", JSON.stringify(contextPreference)); }
+      catch (_) { contextStorageAvailable = false; }
+      renderControls();
+    }
+
+    function persistContextPresets() {
+      try { localStorage.setItem("voice-input.asr-context-presets", JSON.stringify(contextPresets)); }
+      catch (_) { contextStorageAvailable = false; }
+      rememberContext();
+    }
+
+    function canManageContext() {
+      return phase === "idle" && !departing && !!service?.asr_context_configurable;
+    }
+
+    function openContextEditor(editing) {
+      if (!canManageContext() || contextEditor) return;
+      const item = editing ? contextPresets.find(item => item.id === contextPreset.value) : null;
+      if (editing && !item) return;
+      contextEditor = { id: item?.id || null };
+      contextPresetName.value = item ? presetLabel(item) : "";
+      contextPresetText.value = item?.text ?? selectedContext();
+      contextPresetError.hidden = true;
+      contextPresetName.setAttribute("aria-invalid", "false");
+      contextPresetText.setAttribute("aria-invalid", "false");
+      renderControls();
+      contextPresetName.focus();
+    }
+
+    function closeContextEditor() {
+      if (!canManageContext()) return;
+      contextEditor = null;
+      contextPresetError.hidden = true;
+      renderControls();
+      contextPreset.focus();
+    }
+
+    function saveContextPreset() {
+      if (!canManageContext() || !contextEditor) return;
+      const name = contextPresetName.value.trim();
+      const text = contextPresetText.value.trim();
+      let problem = "", invalidField = contextPresetName;
+      if (!name) problem = m("presetNameRequired");
+      else if (Array.from(name).length > 30) problem = m("presetNameTooLong");
+      else if (contextPresets.some(item => item.id !== contextEditor.id &&
+          [item.name, presetLabel(item)].some(label => label.trim().toLowerCase() === name.toLowerCase()))) {
+        problem = m("presetNameDuplicate");
+      } else if (Array.from(text).length > maxContextChars) {
+        problem = m("presetContextTooLong", { max: maxContextChars });
+        invalidField = contextPresetText;
+      } else {
+        try { encodeURIComponent(text); encodeURIComponent(name); }
+        catch (_) { problem = m("presetInvalid"); }
+      }
+      setLocalized(contextPresetError, problem);
+      contextPresetError.hidden = !problem;
+      if (problem) {
+        invalidField.setAttribute("aria-invalid", "true");
+        invalidField.focus();
+        return;
+      }
+      const id = contextEditor.id || `preset-${globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2)}`;
+      const item = { id, name, text };
+      const index = contextPresets.findIndex(preset => preset.id === id);
+      if (index < 0) contextPresets.push(item);
+      else contextPresets[index] = item;
+      contextEditor = null;
+      deletedContextPreset = null;
+      renderContextOptions(id);
+      persistContextPresets();
+      contextPreset.focus();
+    }
+
+    function deleteContextPreset() {
+      if (!canManageContext() || contextEditor) return;
+      const index = contextPresets.findIndex(item => item.id === contextPreset.value);
+      if (index < 0) return;
+      deletedContextPreset = { item: contextPresets[index], index };
+      contextPresets.splice(index, 1);
+      renderContextOptions("general");
+      persistContextPresets();
+      contextPresetUndo.focus();
+    }
+
+    function undoContextPresetDeletion() {
+      if (!canManageContext() || contextEditor || !deletedContextPreset) return;
+      const { item, index } = deletedContextPreset;
+      contextPresets.splice(index, 0, item);
+      deletedContextPreset = null;
+      renderContextOptions(item.id);
+      persistContextPresets();
+      contextPreset.focus();
+    }
+
+    function recordingContextHeaders(session) {
+      return session.context === null ? {} : { "X-Voice-ASR-Context": encodeURIComponent(session.context) };
+    }
+
+    function recordingSupportError() {
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        return m("httpsRequired");
+      }
+      if (!window.MediaRecorder) return m("recorderUnsupported");
+      return "";
+    }
+
+    function renderControls() {
+      const idle = phase === "idle";
+      const active = phase === "recording";
+      recordButton.disabled = departing || (!active && (
+        !idle || !service || service.transcriber === "unavailable" || !!recordingSupportError() || !!contextValidationError() || !!contextEditor
+      ));
+      recordButton.classList.toggle("recording", active);
+      recordButton.setAttribute("aria-pressed", String(active));
+      setLocalized(recordButton, {
+        idle: m("recordIdle"), requesting: m("recordRequesting"),
+        recording: m("recordRecording"), transcribing: m("finalizing"), correcting: m("correcting"), sending: m("sending")
+      }[phase]);
+      sendButton.disabled = departing || !idle || !service || !transcript.value.trim() ||
+        transcript.value.trim().length > maxTextChars;
+      clearButton.disabled = !idle;
+      autoSend.disabled = !idle;
+      autoCorrect.disabled = !idle || !service?.correction_model;
+      correctButton.disabled = !idle || !service?.correction_model || !transcript.value.trim();
+      restoreButton.disabled = !idle || !originalText || transcript.value === originalText;
+      transcript.readOnly = !idle;
+      const showLive = !!activeSession?.streaming && !activeSession.cancelled &&
+        !activeSession.finalized && (active || phase === "transcribing");
+      liveView.hidden = !showLive;
+      liveLegend.hidden = !showLive;
+      idleLegend.hidden = showLive;
+      transcript.hidden = showLive;
+      setLocalized(document.querySelector("#correction-help"), m(service?.correction_model ? "correctionHelp" : "correctionNotConfigured"));
+      renderContext();
+    }
+
+    function setRecognitionState(message, state = "idle") {
+      setLocalized(recognitionState, message);
+      if (recognitionState.dataset.state !== state) recognitionState.dataset.state = state;
+    }
+
+    function clearLiveTranscript() {
+      liveConfirmed.replaceChildren();
+      liveDraft.replaceChildren();
+      liveEmpty.hidden = false;
+      setLocalized(liveRevision, "");
+      liveRevision.hidden = true;
+    }
+
+    // Real server snapshots replace the current draft immediately. Compare
+    // them only to highlight actual replacements; ordinary appended words
+    // do not masquerade as a correction or wait for a typing animation.
+    function transcriptChange(previous, current) {
+      const before = Array.from(previous);
+      const after = Array.from(current);
+      let start = 0;
+      while (start < before.length && start < after.length && before[start] === after[start]) start += 1;
+      let endBefore = before.length;
+      let endAfter = after.length;
+      while (endBefore > start && endAfter > start && before[endBefore - 1] === after[endAfter - 1]) {
+        endBefore -= 1;
+        endAfter -= 1;
+      }
+      if (!previous || (endBefore === start && start === before.length)) return null;
+      const clip = (characters, end) => {
+        const left = Math.max(0, start - 4);
+        const right = Math.min(characters.length, Math.max(end, start + 1) + 4);
+        const snippet = characters.slice(left, right).join("");
+        return `${left ? "…" : ""}${Array.from(snippet).slice(0, 44).join("")}${right < characters.length || Array.from(snippet).length > 44 ? "…" : ""}`;
+      };
+      return { start, end: endAfter, before: clip(before, endBefore), after: clip(after, endAfter) };
+    }
+
+    function appendTranscriptSegment(element, text, offset, change) {
+      element.replaceChildren();
+      const characters = Array.from(text);
+      const start = change ? Math.max(0, change.start - offset) : 0;
+      const end = change ? Math.min(characters.length, change.end - offset) : 0;
+      if (change && start < end) {
+        element.append(document.createTextNode(characters.slice(0, start).join("")));
+        const highlight = document.createElement("span");
+        highlight.className = "revised";
+        highlight.textContent = characters.slice(start, end).join("");
+        element.append(highlight, document.createTextNode(characters.slice(end).join("")));
+      } else element.textContent = text;
+    }
+
+    function renderStreamingText(session, data, isFinal) {
+      const text = data.text.trim();
+      const previous = session.streamText;
+      const followLatest = liveTranscript.scrollHeight - liveTranscript.scrollTop - liveTranscript.clientHeight < 100;
+      let confirmed = isFinal ? text : "";
+      let draft = isFinal ? "" : text;
+      if (!isFinal && typeof data.confirmed_text === "string" && typeof data.draft_text === "string") {
+        const suppliedConfirmed = data.confirmed_text.trim();
+        const suppliedDraft = data.draft_text.trim();
+        if ([suppliedConfirmed, suppliedDraft].filter(Boolean).join(" ") === text) {
+          confirmed = suppliedConfirmed;
+          draft = suppliedDraft;
+        }
+      }
+      const change = transcriptChange(previous, text);
+      const separator = confirmed && draft ? " " : "";
+      appendTranscriptSegment(liveConfirmed, confirmed + separator, 0, change);
+      appendTranscriptSegment(liveDraft, draft, Array.from(confirmed + separator).length, change);
+      liveEmpty.hidden = !!text;
+      session.streamText = text;
+      transcript.value = text;
+      if (change) {
+        setLocalized(liveRevision, m("revision", { before: change.before, after: change.after }));
+        liveRevision.hidden = false;
+      }
+      // Follow new text only while the user is already near the end, so
+      // looking back through a longer recording does not fight scrolling.
+      if (followLatest) {
+        liveTranscript.scrollTop = liveTranscript.scrollHeight;
+      }
+      if (isFinal) setRecognitionState(m("finalized"), "complete");
+      else if (phase === "recording") setRecognitionState(confirmed ? m("pauseReviewed") : m("draftUpdating"), "live");
+      renderControls();
+    }
+
+    function setPhase(next) {
+      phase = next;
+      renderControls();
+    }
+
+    function setStatus(message, isError = false) {
+      setLocalized(status, message);
+      status.classList.toggle("error", isError);
+    }
+
+    function setDetail(message) {
+      setLocalized(detail, message);
+    }
+
+    function setHint(message) {
+      setLocalized(transcriptHint, message);
+    }
+
+    function formatDuration(seconds) {
+      const whole = Math.max(0, Math.floor(seconds));
+      return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
+    }
+
+    function updateTimer() {
+      if (!recording) return;
+      const seconds = (Date.now() - recording.startedAt) / 1000;
+      timer.textContent = `${formatDuration(seconds)} / ${formatDuration(maxAudioSeconds)}`;
+      // Leave room for timer scheduling and encoder padding at the server limit.
+      const stopAfterSeconds = maxAudioSeconds - Math.min(1, maxAudioSeconds / 2);
+      if (seconds >= stopAfterSeconds && phase === "recording") {
+        setDetail(m("durationLimit", { max: maxAudioSeconds }));
+        endRecording();
+      }
+    }
+
+    function authHeaders(extra = {}) {
+      return { ...extra, "X-Voice-Token": token };
+    }
+
+    async function requestJson(url, options = {}, timeout = 15000, ownerRequests = null) {
+      const controller = new AbortController();
+      requests.add(controller);
+      ownerRequests?.add(controller);
+      const timeoutHandle = setTimeout(() => controller.abort(), timeout);
+      try {
+        const response = await fetch(url, {
+          ...options, headers: authHeaders(options.headers), signal: controller.signal
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const error = new Error(data.error || translated(m("requestFailed", { status: response.status })));
+          const codeKeys = {
+            finalization_failed: "finalizationFailed", FINALIZATION_FAILED: "finalizationFailed",
+            audio_finalization_failed: "finalizationFailed", audio_finalization_unconfirmed: "finalizationFailed", unauthorized: "unauthorized",
+            decoder_unavailable: "decoderUnavailable"
+          };
+          const code = data.code || data.error_code;
+          const key = Object.hasOwn(codeKeys, code) ? codeKeys[code] : null;
+          if (key) error.uiMessage = m(key);
+          else if (!data.error) error.uiMessage = m("requestFailed", { status: response.status });
+          error.status = response.status;
+          if (typeof data.draft_text === "string") error.draftText = data.draft_text;
+          throw error;
+        }
+        return data;
+      } catch (error) {
+        if (error.name === "AbortError") throw localError("requestTimeout");
+        if (error instanceof TypeError) throw localError("connectionFailed");
+        throw error;
+      } finally {
+        clearTimeout(timeoutHandle);
+        requests.delete(controller);
+        ownerRequests?.delete(controller);
+      }
+    }
+
+    async function checkStatus() {
+      const currentGeneration = generation;
+      try {
+        const data = await requestJson("/api/status");
+        if (departing || generation !== currentGeneration) return;
+        service = data;
+        initializeContext(data);
+        autoCorrect.checked = !!data.correction_model && autoCorrectPreference;
+        maxAudioBytes = (Number(data.max_audio_mb) || 25) * 1024 * 1024;
+        maxAudioSeconds = Number(data.max_audio_seconds) || 120;
+        maxTextChars = Number(data.max_text_chars) || 20000;
+        transcript.maxLength = maxTextChars;
+        const problem = recordingSupportError() ||
+          (data.transcriber === "unavailable" ? m("modelUnavailable") : "");
+        setStatus(problem || m("ready"), !!problem);
+        setDetail(data.injector === "dry-run"
+          ? m("dryRunDetail")
+          : data.partial_transcription === "qwen3-native"
+            ? m("nativeReadyDetail", { max: maxAudioSeconds })
+            : streamingSupported()
+            ? m("streamingReadyDetail", { max: maxAudioSeconds })
+            : m("offlineReadyDetail", { max: maxAudioSeconds }));
+      } catch (error) {
+        if (departing || generation !== currentGeneration) return;
+        service = null;
+        setStatus(errorMessage(error), true);
+        setDetail(m("refreshAfterRecovery"));
+      } finally {
+        renderControls();
+      }
+    }
+
+    function supportedMimeType() {
+      if (!window.MediaRecorder) return "";
+      return ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus", "audio/webm"]
+        .find((type) => MediaRecorder.isTypeSupported(type)) || "";
+    }
+
+    // Streaming is opt-in from the server. Older servers keep using the
+    // complete-recording endpoint, so the browser remains compatible while a
+    // streaming ASR backend is being rolled out.
+    function streamingSupported() {
+      return service?.partial_transcription === "snapshot" ||
+        service?.partial_transcription === "qwen3-native" ||
+        service?.streaming === true || service?.streaming_transcription === true;
+    }
+
+    function streamId() {
+      if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    async function beginRecording() {
+      if (phase !== "idle" || recordButton.disabled) return;
+      const currentGeneration = generation;
+      const sessionContext = service?.asr_context_configurable ? selectedContext() : null;
+      setPhase("requesting");
+      setStatus(m("allowMicrophone"));
+      setRecognitionState(m("waitingMicrophone"), "working");
+      let session = null;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+        if (departing || generation !== currentGeneration) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        session = {
+          stream, recorder: null, chunks: [], bytes: 0, cancelled: false,
+          generation: currentGeneration, requests: new Set(), finalized: false,
+          startedAt: Date.now(), streaming: streamingSupported(),
+          streamId: streamId(), streamSequence: 0, streamTask: null, streamPending: null,
+          streamFinalQueued: false, streamFinalReceived: false, streamText: "",
+          streamError: null, previousText: transcript.value,
+          previousOriginalText: originalText, stopRequested: false, context: sessionContext
+        };
+        recording = session;
+        activeSession = session;
+        if (session.streaming) {
+          // The draft may be revised as later audio arrives. Keep the old
+          // contents in the session so a failed stream never loses user text.
+          transcript.value = "";
+          clearLiveTranscript();
+        }
+        const mimeType = supportedMimeType();
+        session.mimeType = mimeType || "audio/webm";
+        session.recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        session.recorder.addEventListener("dataavailable", (event) => {
+          if (!sessionIsCurrent(session) || !event.data.size) return;
+          session.bytes += event.data.size;
+          if (session.bytes > maxAudioBytes) {
+            failRecording(session, m("audioTooLarge"));
+            return;
+          }
+          session.chunks.push(event.data);
+          if (session.streaming && !session.stopRequested) {
+            // MediaRecorder's later WebM fragments are not standalone files.
+            // Send a cumulative container snapshot so the offline fallback
+            // decoder can re-read the recording and replace the draft.
+            const snapshot = new Blob(session.chunks, { type: session.mimeType });
+            queueStreamingChunk(session, snapshot);
+          }
+        });
+        session.recorder.addEventListener("error", () =>
+          failRecording(session, m("microphoneInterrupted")), { once: true });
+        session.recorder.addEventListener("stop", () => finishRecording(session), { once: true });
+        session.recorder.start(1000);
+        timerHandle = setInterval(updateTimer, 250);
+        setPhase("recording");
+        updateTimer();
+        setStatus(m("recording"));
+        setRecognitionState(session.streaming ? m("listening") : m("recordingState"), "live");
+        setHint(session.streaming
+          ? m("hintLive")
+          : m("hintOffline"));
+        setDetail(session.streaming
+          ? m("liveDetail")
+          : m("recordingDetail"));
+      } catch (error) {
+        if (departing || generation !== currentGeneration) return;
+        const message = {
+          NotAllowedError: m("microphoneDenied"),
+          NotFoundError: m("microphoneMissing"),
+          NotReadableError: m("microphoneBusy")
+        }[error.name] || errorMessage(error);
+        if (session) failRecording(session, message);
+        else {
+          setPhase("idle");
+          setStatus(message, true);
+          setRecognitionState(m("microphoneNotStarted"), "error");
+        }
+      }
+    }
+
+    function sessionIsCurrent(session) {
+      return !departing && !session.cancelled &&
+        session.generation === generation && activeSession === session;
+    }
+
+    function releaseRecording(session) {
+      session.stream.getTracks().forEach((track) => track.stop());
+      if (recording === session) {
+        recording = null;
+        clearInterval(timerHandle);
+        timerHandle = null;
+        timer.textContent = "00:00";
+      }
+    }
+
+    function cancelRecording(session) {
+      session.cancelled = true;
+      session.streamPending = null;
+      session.chunks = [];
+      session.requests.forEach((controller) => controller.abort());
+      if (session.recorder && session.recorder.state !== "inactive") {
+        try { session.recorder.stop(); } catch (_) { /* Tracks still need releasing. */ }
+      }
+      releaseRecording(session);
+      if (activeSession === session) activeSession = null;
+    }
+
+    function failRecording(session, message) {
+      if (session.cancelled) return;
+      const current = sessionIsCurrent(session);
+      // A transport/server failure must not erase the draft the user was
+      // just reading, including failures before they tap stop. It remains
+      // editable but is explicitly unconfirmed and never auto-sent.
+      const preserveDraft = session.streaming && !!session.streamText.trim();
+      if (current && session.streaming) {
+        transcript.value = preserveDraft ? session.streamText : session.previousText;
+        originalText = preserveDraft ? session.streamText : session.previousOriginalText;
+      }
+      cancelRecording(session);
+      if (!current) return;
+      setPhase("idle");
+      setStatus(message, true);
+      setRecognitionState(preserveDraft ? m("draftUnconfirmed") : m("recognitionIncomplete"), "error");
+      setHint(preserveDraft
+        ? m("hintDraftPreserved")
+        : m("hintOriginalPreserved"));
+      if (!preserveDraft) clearLiveTranscript();
+      setDetail(preserveDraft
+        ? m("draftPreservedDetail")
+        : m("originalPreservedDetail"));
+    }
+
+    function endRecording() {
+      if (!recording || phase !== "recording") return;
+      recording.stopRequested = true;
+      setPhase("transcribing");
+      setStatus(recording.streaming ? m("finalizing") : m("transcribing"));
+      setRecognitionState(recording.streaming ? m("reviewingLast") : m("transcribing"), "working");
+      setHint(m("hintFinalizing"));
+      try {
+        if (recording.recorder.state !== "inactive") recording.recorder.stop();
+      } catch (error) {
+        failRecording(recording, errorMessage(error));
+      }
+    }
+
+    async function finishRecording(session) {
+      if (!sessionIsCurrent(session) || recording !== session) return;
+      if (session.streaming) {
+        await finishStreamingRecording(session);
+        return;
+      }
+      const currentGeneration = generation;
+      const type = session.recorder.mimeType || session.chunks[0]?.type || "audio/webm";
+      const blob = new Blob(session.chunks, { type });
+      releaseRecording(session);
+      session.chunks = [];
+      setPhase("transcribing");
+      setStatus(m("transcribing"));
+      try {
+        if (!blob.size) throw localError("noAudio");
+        const data = await requestJson("/api/transcribe", {
+          method: "POST",
+          headers: { "Content-Type": type, ...recordingContextHeaders(session) },
+          body: blob
+        }, 120000);
+        if (departing || generation !== currentGeneration) return;
+        const text = typeof data.text === "string" ? data.text.trim() : "";
+        if (!text) throw localError("noText");
+        transcript.value = text;
+        originalText = text;
+        session.finalized = true;
+        setStatus(m("transcriptionComplete"));
+        setRecognitionState(m("finalized"), "complete");
+        setHint(m("hintFinalized"));
+        setDetail(m("serverElapsed", { elapsed: data.elapsed_ms }));
+        setPhase("idle");
+        if (autoCorrect.checked && service?.correction_model) await correctText();
+        if (departing || generation !== currentGeneration) return;
+        if (autoSend.checked) await injectText();
+      } catch (error) {
+        if (departing || generation !== currentGeneration) return;
+        setStatus(errorMessage(error), true);
+        setDetail(m("originalPreservedDetail"));
+        setRecognitionState(m("recognitionIncomplete"), "error");
+        setHint(m("hintOriginalPreserved"));
+      } finally {
+        if (sessionIsCurrent(session)) {
+          activeSession = null;
+          setPhase("idle");
+        }
+      }
+    }
+
+    function queueStreamingChunk(session, blob, isFinal = false) {
+      if (!sessionIsCurrent(session)) return Promise.resolve();
+      if (session.streamFinalQueued && !isFinal) return session.streamTask || Promise.resolve();
+      if (isFinal) session.streamFinalQueued = true;
+      // Every snapshot contains all earlier bytes, so obsolete waiting
+      // snapshots can be replaced. A slow recognizer keeps at most one
+      // request in flight and one latest snapshot waiting, including final.
+      session.streamPending = { blob, isFinal };
+      if (!session.streamTask) session.streamTask = drainStreamingChunks(session);
+      return session.streamTask;
+    }
+
+    async function drainStreamingChunks(session) {
+      try {
+        while (sessionIsCurrent(session) && session.streamPending) {
+          const { blob, isFinal } = session.streamPending;
+          session.streamPending = null;
+          const sequence = session.streamSequence++;
+          let data;
+          try {
+            data = await requestJson("/api/transcribe/partial", {
+              method: "POST",
+              headers: {
+                "Content-Type": blob.type || session.mimeType,
+                "X-Voice-Stream-Id": session.streamId,
+                "X-Voice-Stream-Sequence": String(sequence),
+                "X-Voice-Stream-Final": String(isFinal),
+                ...recordingContextHeaders(session)
+              },
+              body: blob
+            }, isFinal ? 120000 : 30000, session.requests);
+          } catch (error) {
+            // An unfinished MP4/WebM container may not decode yet. Keep
+            // recording and retry with the next larger snapshot; final
+            // decoding errors are still surfaced to the user.
+            if (!isFinal && error.status === 422) continue;
+            throw error;
+          }
+          if (!sessionIsCurrent(session)) return;
+          if (isFinal && (typeof data.text !== "string" || !data.text.trim())) {
+            throw localError("lastUnfinalized");
+          }
+          if (typeof data.text === "string") {
+            const text = data.text.trim();
+            if (text || isFinal) {
+              renderStreamingText(session, data, isFinal);
+            }
+          }
+          if (isFinal) session.streamFinalReceived = true;
+        }
+      } catch (error) {
+        session.streamError = error;
+        if (sessionIsCurrent(session)) {
+          const preserveDraft = typeof error.draftText === "string" && !!error.draftText.trim();
+          if (preserveDraft) session.streamText = error.draftText.trim();
+          failRecording(session, errorMessage(error) || m("streamFailed"));
+        }
+      } finally {
+        // The pump owns and handles its errors. dataavailable listeners do
+        // not await it, so this promise must never reject unobserved.
+        session.streamTask = null;
+      }
+    }
+
+    async function finishStreamingRecording(session) {
+      if (!sessionIsCurrent(session) || recording !== session) return;
+      releaseRecording(session);
+      setPhase("transcribing");
+      setStatus(m("finalizing"));
+      setRecognitionState(m("reviewingLast"), "working");
+      setHint(m("hintFinalizing"));
+      try {
+        if (!session.chunks.length) throw localError("noAudio");
+        // Only stop guarantees that the final dataavailable event has been
+        // delivered. Always send the complete finalized container, even if
+        // that event was empty or the device stopped without a button tap.
+        await queueStreamingChunk(
+          session, new Blob(session.chunks, { type: session.recorder.mimeType || session.mimeType }), true
+        );
+        if (!sessionIsCurrent(session)) return;
+        if (session.streamError) throw session.streamError;
+        if (!session.streamFinalReceived) throw localError("notFinished");
+        const text = session.streamText.trim();
+        if (!text) throw localError("noText");
+        transcript.value = text;
+        originalText = text;
+        session.finalized = true;
+        setStatus(m("transcriptionComplete"));
+        setRecognitionState(m("finalized"), "complete");
+        setHint(m("hintFinalized"));
+        setDetail(m("streamComplete"));
+        setPhase("idle");
+        if (autoCorrect.checked && service?.correction_model) await correctText();
+        if (!sessionIsCurrent(session)) return;
+        if (autoSend.checked) await injectText();
+      } catch (error) {
+        if (sessionIsCurrent(session)) failRecording(session, errorMessage(error));
+      } finally {
+        session.chunks = [];
+        if (sessionIsCurrent(session)) {
+          activeSession = null;
+          setPhase("idle");
+        }
+      }
+    }
+
+    async function injectText() {
+      const text = transcript.value.trim();
+      if (!text || phase !== "idle" || !service || text.length > maxTextChars) return;
+      const currentGeneration = generation;
+      setPhase("sending");
+      setStatus(m("sending"));
+      try {
+        const data = await requestJson("/api/inject", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        if (departing || generation !== currentGeneration) return;
+        const dryRun = typeof data.dry_run === "boolean"
+          ? data.dry_run : service.injector === "dry-run";
+        setStatus(dryRun ? m("testSent") : m("sent"));
+        setDetail(dryRun ? m("noPaste") : m("confirmPaste"));
+      } catch (error) {
+        if (departing || generation !== currentGeneration) return;
+        setStatus(errorMessage(error), true);
+        setDetail(m("sendingFailedDetail"));
+      } finally {
+        if (!departing && generation === currentGeneration) setPhase("idle");
+      }
+    }
+
+    async function correctText() {
+      if (phase !== "idle" || !transcript.value.trim() || !service?.correction_model) return;
+      const currentGeneration = generation;
+      const source = transcript.value;
+      setPhase("correcting");
+      setStatus(m("correcting"));
+      try {
+        const data = await requestJson("/api/correct", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: source })
+        }, 20000);
+        if (departing || generation !== currentGeneration) return;
+        if (data.status === "corrected" && typeof data.text === "string") {
+          originalText = source;
+          transcript.value = data.text;
+        }
+        const messages = {
+          corrected: m("correctionComplete"), unchanged: m("correctionUnchanged"), rejected: m("originalKept"),
+          unavailable: m("correctionUnavailable"), disabled: m("correctionDisabled"),
+          too_long: m("correctionTooLong")
+        };
+        setStatus(messages[data.status] || m("originalKept"), data.status === "unavailable");
+        setDetail(m("correctionElapsed", { elapsed: data.elapsed_ms }));
+      } catch (error) {
+        if (departing || generation !== currentGeneration) return;
+        setStatus(errorMessage(error), true);
+        setDetail(m("originalKept"));
+      } finally {
+        if (!departing && generation === currentGeneration) setPhase("idle");
+      }
+    }
+
+    recordButton.addEventListener("click", () => {
+      if (recordButton.disabled) return;
+      if (phase === "recording") endRecording();
+      else beginRecording();
+    });
+    uiLanguageSelect.addEventListener("change", () => {
+      uiLanguage = uiLanguageSelect.value === "zh-CN" ? "zh-CN" : "en";
+      try { localStorage.setItem("voice-input.ui-language", uiLanguage); }
+      catch (_) { contextStorageAvailable = false; }
+      applyLanguage();
+    });
+    sendButton.addEventListener("click", injectText);
+    contextPreset.addEventListener("change", rememberContext);
+    contextCustom.addEventListener("input", rememberContext);
+    contextPresetNew.addEventListener("click", () => openContextEditor(false));
+    contextPresetEdit.addEventListener("click", () => openContextEditor(true));
+    contextPresetDelete.addEventListener("click", deleteContextPreset);
+    contextPresetUndo.addEventListener("click", undoContextPresetDeletion);
+    document.querySelector("#context-preset-save").addEventListener("click", saveContextPreset);
+    document.querySelector("#context-preset-cancel").addEventListener("click", closeContextEditor);
+    [contextPresetName, contextPresetText].forEach(field => field.addEventListener("input", () => {
+      contextPresetError.hidden = true;
+      field.setAttribute("aria-invalid", "false");
+      renderContext();
+    }));
+    contextPresetEditor.addEventListener("keydown", event => {
+      if (event.isComposing) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeContextEditor();
+      } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        saveContextPreset();
+      }
+    });
+    correctButton.addEventListener("click", correctText);
+    autoCorrect.addEventListener("change", () => {
+      autoCorrectPreference = autoCorrect.checked;
+      try {
+        localStorage.setItem("voice-input.auto-correct", String(autoCorrectPreference));
+      } catch (_) { /* Keep the selection for the current page session. */ }
+    });
+    restoreButton.addEventListener("click", () => {
+      if (phase !== "idle") return;
+      transcript.value = originalText;
+      setStatus(m("restored"));
+      setRecognitionState(m("restored"));
+      clearLiveTranscript();
+      renderControls();
+    });
+    clearButton.addEventListener("click", () => {
+      transcript.value = "";
+      originalText = "";
+      setDetail("");
+      clearLiveTranscript();
+      setRecognitionState(m("waitingRecording"));
+      setHint(m("hintIdle"));
+      renderControls();
+    });
+    transcript.addEventListener("input", () => {
+      clearLiveTranscript();
+      setRecognitionState(transcript.value ? m("manualEdit") : m("waitingRecording"));
+      renderControls();
+    });
+    window.addEventListener("pagehide", () => {
+      departing = true;
+      generation += 1;
+      if (activeSession) {
+        if (activeSession.streaming && !activeSession.finalized) {
+          transcript.value = activeSession.previousText;
+          originalText = activeSession.previousOriginalText;
+        }
+        cancelRecording(activeSession);
+      }
+      requests.forEach((controller) => controller.abort());
+      clearLiveTranscript();
+      setRecognitionState(m("waitingRecording"));
+      setHint(m("hintIdle"));
+      setPhase("idle");
+    });
+    window.addEventListener("pageshow", () => {
+      if (!departing) return;
+      departing = false;
+      service = null;
+      renderControls();
+      checkStatus();
+    });
+    applyLanguage();
+    (async () => {
+      await migrateContextPresets();
+      if (departing) return;
+      applyLanguage();
+      checkStatus();
+    })();
+  </script>
+</body>
+</html>
+

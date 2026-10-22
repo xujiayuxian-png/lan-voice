@@ -1,0 +1,5 @@
+-c constraints-streaming.txt
+-r requirements.txt
+qwen-asr[vllm]==0.0.6
+vllm==0.14.0
+transformers==4.57.6

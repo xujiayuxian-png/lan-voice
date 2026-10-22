@@ -1,0 +1,18 @@
+# Runtime versions for the official Qwen3-ASR / vLLM 0.14 integration.
+# Prevent future UI / CUDA extras from changing the ASR dependency set.
+gradio==6.5.1
+fastapi==0.128.0
+pydantic==2.12.5
+openai==2.16.0
+mcp==1.26.0
+ray==2.53.0
+
+# DyNet's released wheels require the NumPy 1.x ABI.
+numpy==1.26.4
+cupy-cuda12x==13.6.0
+
+# Keep FlashInfer's optional CUDA helpers on the CUDA 12 generation.
+nvidia-cudnn-frontend==1.17.0
+nvidia-cutlass-dsl==4.3.4
+cuda-python==12.9.4
+cuda-bindings==12.9.4
