@@ -24,6 +24,7 @@ ROOT_FILES = {
     "requirements-dev.txt", "constraints-streaming.txt",
     "server.py", "streaming_asr.py", "punctuation.py", "correction.py", "clipboard_paste.py",
     "run.sh", "run_streaming.sh", "run_with_correction.sh",
+    "voice-service.sh",
 }
 PUBLIC_DIRS = (".github", "docs", "scripts", "static", "tests")
 PUBLIC_SUFFIXES = {".py", ".md", ".txt", ".html", ".css", ".js", ".json", ".yml", ".yaml", ".svg", ".png", ".wav"}

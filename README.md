@@ -57,6 +57,16 @@ For the CPU alternative and configuration details, see the [setup and usage guid
 
 ## Use it
 
+Use the service helper to start, inspect, restart, or stop the local server:
+
+```bash
+bash voice-service.sh start
+bash voice-service.sh status
+bash voice-service.sh stop
+```
+
+The helper writes the PID to `.local/server.pid` and appends startup output to `.local/server.log`.
+
 1. Keep the phone and host computer on the same network. Open the printed LAN `https://` URL on the phone and accept the local certificate if prompted.
 2. Allow microphone access, then press **Start recording** below the text area. Speak naturally and pause between sentences to see confirmed text separate from the revisable draft.
 3. Press **Stop & finalize**. Edit the result and check names, numbers, and negations. Try the [read-aloud sample](TEST_READING.md).

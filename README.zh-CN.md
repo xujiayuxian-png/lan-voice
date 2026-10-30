@@ -57,6 +57,16 @@ CPU 方案及详细配置见[安装与使用说明](docs/usage.zh-CN.md#cpu-方�
 
 ## 使用
 
+使用服务脚本启动、查看、重启或停止本地服务：
+
+```bash
+bash voice-service.sh start
+bash voice-service.sh status
+bash voice-service.sh stop
+```
+
+脚本会把进程号写入 `.local/server.pid`，并将启动输出追加到 `.local/server.log`。
+
 1. 手机与电脑连接同一局域网，打开终端打印的局域网 `https://` 地址；出现本地证书提示时允许访问。
 2. 允许麦克风权限，点击文字区下方的“开始录音”。自然说话，句间停顿，可以看到已确认内容与可回改草稿。
 3. 点击“结束并定稿”，检查并编辑结果，重点核对名称、数字和否定词。初次试用可朗读[测试文本](TEST_READING.zh-CN.md)。
